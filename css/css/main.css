@@ -1,0 +1,26 @@
+body {
+  padding-top: 50px;
+}
+
+#pose-data {
+  height: 200px;
+  overflow-y: scroll;
+}
+
+#threed-map canvas {
+  border-radius: 14px;
+  box-shadow:
+    rgba(0, 0, 0, 0) 0px 0px 0px 0px,
+    rgba(204, 204, 204, .5) 0px 1px 8px 0px,
+    rgba(0, 0, 0, 0) 0px 0px 0px 0px,
+    rgba(0, 0, 0, 0) 0px 0px 0px 0px;
+}
+
+#twod-map canvas {
+  border-radius: 14px;
+  box-shadow:
+    rgba(0, 0, 0, 0) 0px 0px 0px 0px,
+    rgba(204, 204, 204, .5) 0px 1px 8px 0px,
+    rgba(0, 0, 0, 0) 0px 0px 0px 0px,
+    rgba(0, 0, 0, 0) 0px 0px 0px 0px;
+}

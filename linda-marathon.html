@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Linda - Lincoln's Patrol Bot</title>
+    <link 	rel="icon" 
+      		type="image/png" 
+      		href="http://strands.acin.tuwien.ac.at/logos/strands2.png">
+
+    <meta charset="utf-8" />
+    <META HTTP-EQUIV="Pragma" CONTENT="no-cache">
+    <META HTTP-EQUIV="Expires" CONTENT="-1">
+
+    <!-- The default styling is provided by http://getbootstrap.com -->
+    <link href="css/bootstrap.css" rel="stylesheet">
+    <link href="css/main.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="css/jquery-ui.css" />
+
+    <!-- jQuery and display.js are conveniences for interacting with the DOM -->
+    <script src="js/jquery.js"></script>
+    <script src="js/display.js"></script>
+
+    <script type="text/javascript" src="js/jquery-ui.js"></script>
+
+    <!-- ROSLIBJS -->
+    <!-- EventEmitter2 is the sole dependency of roslibjs -->
+    <script src="roslibjs/include/EventEmitter2/eventemitter2.js"></script>
+    <!-- Roslibjs handles core ROS functionality in the browser -->
+    <script src="roslibjs/build/roslib.js"></script>
+
+    <!-- ROS2DJS -->
+    <!-- EaselJS is a dependency of ros2djs -->
+    <script src="ros2djs/include/EaselJS/easeljs.js"></script>
+    <!-- Ros2djs provides 2D scene support, including mapping and more -->
+    <script src="ros2djs/build/ros2d.js"></script>
+
+    <!-- ROS3DJS -->
+    <!-- Three.js is the WebGL rendering library -->
+    <script src="ros3djs/include/threejs/three.js"></script>
+    <!-- ColladaLoader2 loads collada models of the robot -->
+    <script src="ros3djs/include/ColladaAnimationCompress/ColladaLoader2.js"></script>
+    <!-- Ros3djs provides 3D scene support, including mapping and more -->
+    <script src="ros3djs/build/ros3d.min.js"></script>
+    
+    <script type="text/javascript" src="mjpegcanvasjs/build/mjpegcanvas.min.js"></script>
+
+    <script type="text/javascript">
+      var hostname = location.hostname;
+
+      /**
+      * Setup all GUI elements when the page is loaded.
+      */
+      function init() {
+      // Connecting to ROS.
+      var ros = new ROSLIB.Ros({
+      url : 'ws://'+hostname+'/linda/rosws'
+      });
+
+ 
+      // ----------------------------------------------------------------------
+      // Subscribing to the robot's Battery
+      // ----------------------------------------------------------------------
+
+      // The ROSLIB.Topic handles subscribing and publishing a ROS topic. This
+      // topic interacts with the /robot_pose topic, published by the robot.
+      var batteryTopic = new ROSLIB.Topic({
+      ros         : ros,
+      name        : '/webthrottle/battery_state',
+      messageType : 'scitos_msgs/BatteryState'
+      });
+
+      // Subscribes to the robot's battery state. 
+      batteryTopic.subscribe(function(message) { 
+	var estChargeTime=5*(85-message.lifePercent);
+	var estDischargeTime=11*(message.lifePercent-30);
+	var chargingText='';
+	if (message.charging) {
+		chargingText='Linda is currently <b>recharging</b> at a current of '+(-message.current.toFixed(1))+' Amperes. Her current charging level is <b>' + message.lifePercent + '%</b>. She will start patrolling again when charging level reaches 85% (in approx. '+estChargeTime+' minutes).';
+	} else {
+		chargingText='Linda is currently <b>running on battery</b> drawing a current of '+(message.current.toFixed(1))+' Amperes. Her current charging level is <b>' + message.lifePercent + '%</b>. She will go to recharge again when charging level drops to 30% (approx. '+estDischargeTime+' minutes of operation left).';
+	}
+
+      	$('#battery').html(chargingText);
+      });
+
+
+
+	var myVar=setInterval(function(){myStatusTimer()},10000);
+
+	function myStatusTimer()
+	{
+		$.getJSON('http://lcas.lincoln.ac.uk/linda-stats/patrol_run.json', function (json) {
+			var s=json.length
+	     	$('#status').html('In her current run, Linda has been travelling <b>'+ (json[s-1].distance/1000).toFixed(3) + ' kilometres</b> so far. The total autonomous runtime in this tour is <b>'+(json[s-1].run_duration/3600).toFixed(2)+' hour(s)</b>. <b>' + json[s-1].successful_waypoints + ' waypoints</b> have been successfully visited during this tour.');
+	});      
+	}
+
+        // ----------------------------------------------------------------------
+        // Create the camera viewer.
+        // ----------------------------------------------------------------------
+
+
+        var viewer = new MJPEGCANVAS.Viewer({
+        divID : 'mjpeg',
+        host : hostname,
+        port : '80/linda/video',
+        width : 560,
+        height : 420,
+        topic : '/image_blurrer/output_video'
+        });
+
+        var webcam = new MJPEGCANVAS.Viewer({
+        divID : 'mjpeg_webcam',
+        host : hostname,
+        port : '80/linda/video',
+        width : 280*0.9,
+        height : 210*0.9,
+        topic : '/webthrottle/webcam/image'
+        });
+
+        
+        
+        // ----------------------------------------------------------------------
+        // Rendering the robot in 3D
+        // ----------------------------------------------------------------------
+
+        // Create the scene manager and view port for the 3D world.
+        var viewer3D = new ROS3D.Viewer({
+        divID      : 'threed-map',
+        width      : 560,
+        height     : 420,
+        antialias  : true,
+	cameraPose : {x: 10, y: 10, z: 15},
+        background : '#EEEEEE'
+        });
+
+        // Create a TF client that subscribes to the fixed frame.
+        var tfClient = new ROSLIB.TFClient({
+        ros          : ros,
+        angularThres : 0.1,
+        transThres   : 0.1,
+        rate         : 1.0,
+        fixedFrame   : '/map'
+        });
+
+
+        // Add the URDF model of the robot.
+        var urdfClient = new ROS3D.UrdfClient({
+        ros        : ros,
+        tfClient   : tfClient,
+        rootObject : viewer3D.scene
+        });
+
+        var colorMaterial = ROS3D.makeColorMaterial(1, 0, 0,0.5);
+
+        // Track robot pose with an arrow
+        var arrowNode = new ROS3D.SceneNode({
+        tfClient : tfClient,
+        frameID  : '/base_link',
+        object   : new ROS3D.Arrow({
+        length : 0.3,
+        material : colorMaterial
+        }),        
+        });
+
+        viewer3D.scene.add(arrowNode);
+
+
+        // ----------------------------------------------------------------------
+        // Rendering the map in 3D
+        // ----------------------------------------------------------------------
+
+        // Add the Occupancy Grid map.
+        var grid = new ROS3D.OccupancyGridClient({
+        ros        : ros,
+        tfClient   : tfClient,
+        rootObject : viewer3D.scene
+        });
+        grid.on('change', function() {
+        // Change the opacity level.
+        grid.currentGrid.children[0].material.transparent = false;
+        grid.currentGrid.children[0].material.opacity = 0.85;
+        grid.currentGrid.children[0].material.needsUpdate = true;
+        });
+        }
+    </script>
+  </head>
+
+  <body onload="init()">
+	<div id="fb-root"></div>
+	<script>(function(d, s, id) {
+	  var js, fjs = d.getElementsByTagName(s)[0];
+	  if (d.getElementById(id)) return;
+	  js = d.createElement(s); js.id = id;
+	  js.src = "//connect.facebook.net/en_GB/all.js#xfbml=1";
+	  fjs.parentNode.insertBefore(js, fjs);
+	}(document, 'script', 'facebook-jssdk'));
+	</script>
+
+    <div class="navbar navbar-inverse navbar-fixed-top">
+      <a class="navbar-brand" href="#"><img src="http://www.lincoln.ac.uk/home/media/universityoflincoln/styleassets/images/logo-white.png"/></a>      
+      <ul class="nav pull-right">
+        <li><a href="http://lcas.lincoln.ac.uk">L-CAS</a></li>
+        <li><a href="http://www.strands-project.eu/marathon.html">STRANDS Robot Marathon</a></li>
+	<li class="active"><a href="linda.html">Linda Live</a></li>
+        <li><a href="linda-strands.html">Linda Information</a></li>
+        <!--<li><a href="navigation.html">Autonomous</a></li>-->
+      </ul>
+    </div>
+    <div class="container">
+<!--
+      <div class="row">
+	<H1><font color="red">BETA WEBSITE, subject to continuous modification and only available occasionally for now</font></H1>
+      </div>
+      <br/>
+-->
+      <div class="row">
+      <H1>
+        Welcome to Linda's homepage!
+      </H1>
+      
+      <div class="col-span-6">
+        <p>
+          Hello, my name is Linda. I am a research robot. I am situated in
+          the <a href="http://lcas.lincoln.ac.uk">Centre for Autonomous Systems</a> at
+          the <a href="http://www.lincoln.ac.uk">University of Lincoln</a>,
+          UK. My current job is to patrol our research lab. Below you can find some information of
+          what I am actually doing.
+          </p>
+        
+        <p>
+          In general, I am a research platform in the context of
+          the <a href="http://www.strands-project.eu">STRANDS</a> project
+          (Spatio-Temporal Representations and Activities for Cognitive Control
+          in Long-Term Scenarios), a 4-year EU FP7 Integrating Project.
+        </p>
+	<div class="row">
+	<div class="col-span-6">
+  	  <h3>Linda's Current Tour</h3>
+	  <p><div id="status">Status</div></p>
+	  <p><div id="battery">Status</div></p>
+	</div>
+	<div class="col-span-6">
+          <div id="mjpeg_webcam"></div>
+	  <i>Live view of Linda's charging station (updated every ~3 seconds)</i>
+	</div>
+	</div>
+      </div>
+      <div class="col-span-6">
+	<iframe width="600" height="338" src="//www.youtube.com/embed/videoseries?list=PLPY1_sJa70XA7bH05Y-WEJ0zXOGvpooYe&autoplay=1" frameborder="0" allowfullscreen></iframe>
+	<p>Linda in action in our labs.</p>
+      </div>
+      </div>
+
+	
+      <div class="row">
+        <div class="col-span-6">
+          <h1><small>Live 3D map</small></h1>
+          <div id="threed-map"></div>
+	  <i>Use your mouse to navigate the map. This features requires your browser to support <a href="http://get.webgl.org/">WebGL</a>. Due to a high load on the server you may have to reload this page, if you cannot see the robot on its map here. Linda has mapped out this space before and can now autonomously move about to act as a security guard. She is patrolling day and night, autonomously goes to recharge herself if needed, and resumes her patrol round when fully charged.</i>
+        </div>
+        <div class="col-span-6">
+          <h1><small>Robot live cam</small></h1>
+          <div id="mjpeg"></div>
+	  <i>The video is blurred to protect the privacy of our staff in the L-CAS research lab. It updates approximately every 3 seconds. It is known that some version of firefox do not automatically update this video stream. Please use <a href="https://www.google.com/intl/en/chrome/browser/">Chrome</a> or reload this page.</i>
+        </div>
+      </div>
+
+
+      <!-- Pose Table
+      <div class="row" id="pose-data">
+        <div class="col-span-12">
+          <h1><small>Robot's Pose</small></h1>
+          <table id="poses" class="table table-condensed">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Position</th>
+                <th>Orientation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+ -->
+      
+
+      <div class="row">
+	<div class="col-span-2">
+		<a href="http://strands.acin.tuwien.ac.at/"><img src="http://strands.acin.tuwien.ac.at/logos/strands2.png"/></a>
+		<p>
+			<div class="fb-like" data-href="http://lcas.lincoln.ac.uk/linda/marathon.html" data-layout="button_count" data-action="like" data-show-faces="true" data-share="true"></div>
+			<script type="text/javascript" src="https://apis.google.com/js/plusone.js"></script>
+			<g:plusone></g:plusone>
+			<a href="https://twitter.com/share" class="twitter-share-button" data-via="LindaStrands" data-related="strands_project" data-dnt="true">Tweet</a>
+			<script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+'://platform.twitter.com/widgets.js';fjs.parentNode.insertBefore(js,fjs);}}(document, 'script', 'twitter-wjs');</script>
+		</p>
+	</div>
+	<div class="col-span-4">
+		<a class="twitter-timeline" data-dnt="true" href="https://twitter.com/LindaStrands" data-widget-id="402372847793741825">Tweets by @LindaStrands</a>
+<script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+	</div>
+	<div class="col-span-4">
+<a class="twitter-timeline" data-dnt="true" href="https://twitter.com/strands_project" data-widget-id="402373765784293377">Tweets by @strands_project</a>
+<script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+</div>
+	<div class="col-span-2">
+		<iframe src="https://mapsengine.google.com/map/embed?mid=z6XG8OR_zLGs.kbF9OSRyk6dQ" width="220" height="250"></iframe>
+	</div>
+      </div>
+
+
+    </div>
+
+
+
+
+  </body>
+</html>

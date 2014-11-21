@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <META HTTP-EQUIV="Pragma" CONTENT="no-cache">
+    <META HTTP-EQUIV="Expires" CONTENT="-1">
+
+    <!-- The default styling is provided by http://getbootstrap.com -->
+    <link href="css/bootstrap.css" rel="stylesheet">
+    <link href="css/main.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="css/jquery-ui.css" />
+
+    <!-- EventEmitter2 is the sole dependency of roslibjs -->
+    <script src="roslibjs/include/EventEmitter2/eventemitter2.js"></script>
+    <!-- Roslibjs handles core ROS functionality in the browser -->
+    <script src="roslibjs/build/roslib.js"></script>
+
+    <!-- ROS2DJS -->
+    <!-- EaselJS is a dependency of ros2djs -->
+    <script src="ros2djs/include/EaselJS/easeljs.js"></script>
+    <!-- Ros2djs provides 2D scene support, including mapping and more -->
+    <script src="ros2djs/build/ros2d.js"></script>
+
+    <!-- <script src="js/nav2d.min.js"></script> -->
+    <!-- <script src="js/strands_nav2d.js"></script> -->
+    <script src="nav2djs/build/nav2d.js"></script> 
+
+    <script type="text/javascript">
+      var hostname = location.hostname;
+
+      /**
+      * Setup all GUI elements when the page is loaded.
+      */
+      function init() {
+      // Connect to ROS.
+      // Connecting to ROS.
+      var ros = new ROSLIB.Ros({
+	url : 'ws://'+hostname+'/rosws'
+      });
+
+
+      // Create the main viewer.
+      var viewer = new ROS2D.Viewer({
+      divID : 'nav',
+      width : window.innerWidth/2,
+      height : window.innerHeight
+      });
+
+      // Subscribes to the robot's OccupancyGrid, which is ROS representation of
+      // the map, and renders the map in the scene.
+      //var gridClient = new ROS2D.OccupancyGridClient({
+      //  ros : ros,
+      //  rootObject : viewer.scene
+      //});
+
+
+      // Setup the nav client.
+      var gridClient =  NAV2D.OccupancyGridClientNav({
+      ros : ros,
+      rootObject : viewer.scene,
+      viewer : viewer,
+      serverName : '/move_base',
+      withOrientation : true
+      });
+
+      var xDelta = 0;
+      var yDelta = 0;
+
+
+
+
+      // move view using keyboard
+      // sets up a key listener on the page used for keyboard teleoperation
+      var handleKey = function(keyCode, keyDown) {
+      // used to check for changes in speed
+
+      var shiftAmout = 0.5;
+
+      // check which key was pressed
+      if (keyDown === true) {
+      switch (keyCode) {
+      case 65:
+      // turn left
+      viewer.shift(shiftAmout,0);
+      xDelta -= shiftAmout;
+      break;
+      case 87:
+      // up
+      viewer.shift(0,-shiftAmout);
+      yDelta += shiftAmout;
+      break;
+      case 68:
+      // turn right
+      viewer.shift(-shiftAmout,0);
+      xDelta += shiftAmout;
+      break;
+      case 83:
+      // down
+      viewer.shift(0,shiftAmout);
+      yDelta -= shiftAmout;
+      break;
+      case 79:
+      // recentre
+      viewer.shift(xDelta,yDelta);        
+      xDelta = 0;
+      yDelta = 0;
+      break;
+      }
+      }
+      };
+
+      
+      // handle the key
+      var body = document.getElementsByTagName('body')[0];
+      body.addEventListener('keydown', function(e) {
+      handleKey(e.keyCode, true);
+      }, false);
+      body.addEventListener('keyup', function(e) {
+      handleKey(e.keyCode, false);
+      }, false);
+      }
+    </script>
+  </head>
+
+  <body onload="init()">
+    <div class="navbar navbar-inverse navbar-fixed-top">
+      <a class="navbar-brand" href="#">strands_webtools</a>      
+      <ul class="nav pull-right">
+        <li><a href="main.html">Main</a></li>
+        <li class="active"><a href="navigation.html">Autonomous</a></li>
+      </ul>
+    </div>
+    <div class="container">
+      <h1>Map for autonomous Navigation</h1>
+      <ul>
+        <li><strong>w/s</strong>  to move map up and down</li>
+        <li><strong>a/d</strong>  to move map left and right</li>
+        <li><strong>o</strong>  to reset map to original position</li>
+      </ul>
+      <div id="nav"></div> click mouse left button in the map, hold it down to
+      point into a direction and release it to send the robot
+    </div>
+  </body>
+</html>
