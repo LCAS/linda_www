@@ -1,0 +1,24 @@
+<VirtualHost *:80>
+	DocumentRoot /var/www/
+	Alias /linda /opt/strands/lib/www
+	Alias /linda-stats/patrol_run.json /tmp/patrol_run.json
+	
+	RedirectMatch permanent ^/$ http://robots.lincoln.ac.uk/
+
+	<Directory /opt/strands/lib/www>
+		DirectoryIndex linda-strands.html
+		Options -Indexes		
+	
+	</Directory>
+	RewriteEngine On
+	Options -Indexes
+	# proxy for rosbridge
+	RewriteRule ^/linda/video http://10.82.0.43:8080/ [P]
+        ProxyPass /linda/rosws ws://10.82.0.43:9090/
+    	ProxyPassReverse /linda/rosws ws://10.82.0.43:9090/	
+
+	RewriteCond %{HTTP_USER_AGENT} "android|blackberry|googlebot-mobile|iemobile|ipad|iphone|ipod|opera mobile|palmos|webos" [NC]
+	RewriteRule ^/linda/linda.html$ /linda/linda-mobile.html [L,R=302]
+
+</VirtualHost>
+

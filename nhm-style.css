@@ -1,0 +1,122 @@
+   body {background-color:#002147;font-family:verdana;color:white;}
+h2 {font-size:200%}
+p {font-size:100%}
+.button-style {
+	-moz-box-shadow:inset 0px 1px 21px -1px #97c4fe;
+	-webkit-box-shadow:inset 0px 1px 21px -1px #97c4fe;
+	box-shadow:inset 0px 1px 21px -1px #97c4fe;
+	background:-webkit-gradient( linear, left top, left bottom, color-stop(0.05, #3d94f6), color-stop(1, #1e62d0) );
+	background:-moz-linear-gradient( center top, #3d94f6 5%, #1e62d0 100% );
+	filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#3d94f6', endColorstr='#1e62d0');
+	background-color:#3d94f6;
+	-webkit-border-top-left-radius:10px;
+	-moz-border-radius-topleft:10px;
+	border-top-left-radius:10px;
+	-webkit-border-top-right-radius:10px;
+	-moz-border-radius-topright:10px;
+	border-top-right-radius:10px;
+	-webkit-border-bottom-right-radius:10px;
+	-moz-border-radius-bottomright:10px;
+	border-bottom-right-radius:10px;
+	-webkit-border-bottom-left-radius:10px;
+	-moz-border-radius-bottomleft:10px;
+	border-bottom-left-radius:10px;
+	text-indent:0;
+	border:0px solid #337fed;
+	display:inline-block;
+	color:#ffffff;
+	font-family:Verdana;
+	font-size:21px;
+	font-weight:bold;
+	font-style:normal;
+	height:60px;
+	line-height:40px;
+	width:150px;
+	text-decoration:none;
+	text-align:center;
+	text-shadow:1px 1px 1px #1570cd;
+}
+.button-style:hover {
+	background:-webkit-gradient( linear, left top, left bottom, color-stop(0.05, #1e62d0), color-stop(1, #3d94f6) );
+	background:-moz-linear-gradient( center top, #1e62d0 5%, #3d94f6 100% );
+	filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#1e62d0', endColorstr='#3d94f6');
+	background-color:#1e62d0;
+}.button-style:active {
+	position:relative;
+	top:1px;
+}
+.twitter-button {
+	background: url('twitter.png') left center no-repeat;
+  padding-left: 15px;
+  background-size: 100%;
+}
+.twitter-button:hover {
+	background:-webkit-gradient( linear, left top, left bottom, color-stop(0.05, #1e62d0), color-stop(1, #3d94f6) );
+	background:-moz-linear-gradient( center top, #1e62d0 5%, #3d94f6 100% );
+	filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#1e62d0', endColorstr='#3d94f6');
+	background-color:#1e62d0;
+  background: url('twitter.png') left center no-repeat;
+  padding-left: 15px;
+  background-size: 100%;
+}.
+.twitter-button:active {
+  background: url('twitter.png') left center no-repeat;
+  padding-left: 15px;
+  border:3px solid #337fed;
+  background-size: 100%;
+	position:relative;
+	top:10px;
+}
+.alarm-button {
+	background: url('alarm.png') left center no-repeat;
+  padding-left: 15px;
+  background-size: 100%;
+}
+.alarm-button:hover {
+	background:-webkit-gradient( linear, left top, left bottom, color-stop(0.05, #1e62d0), color-stop(1, #3d94f6) );
+	background:-moz-linear-gradient( center top, #1e62d0 5%, #3d94f6 100% );
+	filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#1e62d0', endColorstr='#3d94f6');
+	background-color:#1e62d0;
+  background: url('alarm.png') left center no-repeat;
+  padding-left: 15px;
+  background-size: 100%;
+}.
+.alarm-button:active {
+  background: url('alarm.png') left center no-repeat;
+  padding-left: 15px;
+  border:3px solid #337fed;
+  background-size: 100%;
+	position:relative;
+	top:10px;
+}
+.speak-button {
+	background: url('info.png') left center no-repeat;
+  padding-left: 15px;
+  background-size: 100%;
+}
+.speak-button:hover {
+	background:-webkit-gradient( linear, left top, left bottom, color-stop(0.05, #1e62d0), color-stop(1, #3d94f6) );
+	background:-moz-linear-gradient( center top, #1e62d0 5%, #3d94f6 100% );
+	filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#1e62d0', endColorstr='#3d94f6');
+	background-color:#1e62d0;
+  background: url('info.png') left center no-repeat;
+  padding-left: 15px;
+  background-size: 100%;
+}.
+.speak-button:active {
+  background: url('info.png') left center no-repeat;
+  padding-left: 15px;
+  border:3px solid #337fed;
+  background-size: 100%;
+	position:relative;
+	top:10px;
+}
+.speechout{
+  border-radius: 10px 10px 10px 10px;
+  -moz-border-radius: 10px 10px 10px 10px;
+  -webkit-border-radius: 10px 10px 10px 10px;
+  border: 0px none #000000;
+  font-family:verdana;
+  font-size:110%;
+  text-align: center;
+}
