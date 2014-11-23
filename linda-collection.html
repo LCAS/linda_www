@@ -38,14 +38,14 @@
 
 			<script type="text/javascript">
 				var hostname = location.hostname;
-				var linda = 'linda';
+				var linda = hostname;
 		/**
 		 * Setup all GUI elements when the page is loaded.
 		 */
 		 function init() {
 			// Connecting to ROS.
 			var ros = new ROSLIB.Ros({
-				url : 'ws://' + linda + ':9090/'
+				url : 'ws://' + linda + '/linda/rosws'
 			});
 
 			// ----------------------------------------------------------------------
@@ -56,7 +56,7 @@
 			// topic interacts with the /robot_pose topic, published by the robot.
 			var batteryTopic = new ROSLIB.Topic({
 				ros : ros,
-				name : '/battery_state',
+				name : '/webthrottle/battery_state',
 				messageType : 'scitos_msgs/BatteryState'
 			});
 
@@ -81,30 +81,17 @@
 			var viewer = new MJPEGCANVAS.Viewer({
 				divID : 'mjpeg',
 				host : linda,
-				port : '8080',
+				port : '80/linda/video',
 				width : 250,
 				height : 187,
 				topic : '/webthrottle/head/image'
 			});
 
-        var sayTopic = new ROSLIB.Topic({
-            ros         : ros,
-            name        : '/speak',
-            messageType : 'std_msgs/String'
-        });
-        
-        sayTopic.subscribe(function(message) {
-            // Formats the pose for outputting.
-            var say = message.data;
-    
-            document.getElementById("saytext").value=say;
-        });
-  
         // Create the main viewer.
         var viewer = new ROS2D.Viewer({
           divID : 'nav',
           width : 550,
-          height : 350
+          height : 550
         });
   
         // Subscribes to the robot's OccupancyGrid, which is ROS representation of
@@ -120,7 +107,7 @@
         viewer.scaleToDimensions(gridClient.currentGrid.width, 
           gridClient.currentGrid.height);
 
-        viewer.shift(gridClient.currentGrid.x, gridClient.currentGrid.y-0);
+        viewer.shift(gridClient.currentGrid.x, gridClient.currentGrid.y+10);
 
 
         // get a handle to the stage
@@ -200,8 +187,6 @@
   	<br/>
   	<div class="col-span-3">
   		<div id="logo-left">
-  			<textarea class="speechout" style="overflow:hidden; resize:none; position: absolute; left: 212px; top: 8px; width: 208px; height: 99px; font-weight: bold;"
-  			id="saytext">This is what I should be saying in multiple lines.</textarea> 
 			<div style="position: absolute; left: 212px; top: 280px; width: 250px; height: 187px;" >
 			  	<div id="mjpeg"></div>
 	  		</div>
