@@ -1,3 +1,13 @@
+a:link {
+    color: #CCCCEE;
+}
+
+/* visited link */
+a:visited {
+    color: #CCCCEE;
+}
+
+
    body {background-color:#002147;font-family:verdana;color:white;}
 h2 {font-size:200%}
 p {font-size:100%}
