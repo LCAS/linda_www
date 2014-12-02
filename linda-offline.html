@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Linda - Lincoln's Patrol Bot</title>
+	<link 	rel="icon" 
+	type="image/png" 
+	href="http://strands.acin.tuwien.ac.at/logos/strands2.png">
+
+	<meta charset="utf-8" />
+	<META HTTP-EQUIV="Pragma" CONTENT="no-cache"/>
+	<META HTTP-EQUIV="Expires" CONTENT="-1"/>
+
+	<!-- The default styling is provided by http://getbootstrap.com -->
+	<link href="css/bootstrap.css" rel="stylesheet">
+	<link href="css/main.css" rel="stylesheet">
+	<link rel="stylesheet" type="text/css" href="css/jquery-ui.css" /> 
+	<link rel="stylesheet" type="text/css" href="nhm-style.css" />
+
+	<!-- jQuery and display.js are conveniences for interacting with the DOM -->
+	<script src="js/jquery.js"></script>
+	<script src="js/display.js"></script>
+
+	<script type="text/javascript" src="js/jquery-ui.js"></script>
+
+	<!-- ROSLIBJS -->
+	<!-- EventEmitter2 is the sole dependency of roslibjs -->
+	<script src="roslibjs/include/EventEmitter2/eventemitter2.js"></script>
+	<!-- Roslibjs handles core ROS functionality in the browser -->
+	<script src="roslibjs/build/roslib.js"></script>
+
+	<!-- ROS2DJS -->
+	<!-- EaselJS is a dependency of ros2djs -->
+	<script src="ros2djs/include/EaselJS/easeljs.js"></script>
+	<!-- Ros2djs provides 2D scene support, including mapping and more -->
+	<script src="ros2djs/build/ros2d.js"></script>
+
+	<script type="text/javascript" src="mjpegcanvasjs/build/mjpegcanvas.min.js"></script>
+
+	<script type="text/javascript">
+		var hostname = location.hostname;
+		var linda = hostname;
+		/**
+		 * Setup all GUI elements when the page is loaded.
+		 */
+		function init() {
+			// Connecting to ROS.
+			var connected=true
+			var ros = new ROSLIB.Ros({
+				url : 'ws://' + linda + '/linda/rosws'
+			});
+		    ros.on('error', function(error) {
+		      	console.log('Error connecting to websocket server: ', error);
+		      	connected=false
+		    });
+
+		    
+			ros.on('connection', function() {
+    			console.log('Connected to websocket server.');
+			// ----------------------------------------------------------------------
+			// Subscribing to the robot's Battery
+			// ----------------------------------------------------------------------
+
+			// The ROSLIB.Topic handles subscribing and publishing a ROS topic. This
+			// topic interacts with the /robot_pose topic, published by the robot.
+			var batteryTopic = new ROSLIB.Topic({
+				ros : ros,
+				name : '/webthrottle/battery_state',
+				messageType : 'scitos_msgs/BatteryState'
+			});
+
+			// Subscribes to the robot's battery state.
+			batteryTopic.subscribe(function(message) {
+				var estChargeTime = 5 * (85 - message.lifePercent);
+				var estDischargeTime = 11 * (message.lifePercent - 30);
+				var chargingText = '';
+				if (message.charging) {
+					chargingText = 'Linda is currently <b>recharging</b> at a current of ' + (-message.current.toFixed(1)) + ' Amperes. <br/>Her current charging level is <b>' + message.lifePercent + '%</b>';
+				} else {
+					chargingText = 'Linda is currently <b>running on battery</b> drawing a current of ' + (message.current.toFixed(1)) + ' Amperes. <br/>Her current charging level is <b>' + message.lifePercent + '%</b>. ';
+				}
+
+				$('#battery').html(chargingText);
+			});
+
+			// ----------------------------------------------------------------------
+			// Create the camera viewer.
+			// ----------------------------------------------------------------------
+
+			var viewer = new MJPEGCANVAS.Viewer({
+				divID : 'mjpeg',
+				host : linda,
+				port : '80/linda/video',
+				width : 250,
+				height : 187,
+				topic : '/webthrottle/head/image'
+			});
+
+	        // Create the main viewer.
+	        var viewer = new ROS2D.Viewer({
+	          divID : 'nav',
+	          width : 550,
+	          height : 550
+	        });
+  
+	        // Subscribes to the robot's OccupancyGrid, which is ROS representation of
+	        // the map, and renders the map in the scene.
+	        var gridClient = new ROS2D.OccupancyGridClient({
+	          ros : ros,
+	          rootObject : viewer.scene
+	        });
+
+	        gridClient.on('change', function() {
+
+	        // scale the viewer to fit the map
+	        viewer.scaleToDimensions(gridClient.currentGrid.width, 
+	          gridClient.currentGrid.height);
+
+	        viewer.shift(gridClient.currentGrid.x, gridClient.currentGrid.y+10);
+
+
+	        // get a handle to the stage
+	        var stage;
+	        if (viewer.scene instanceof createjs.Stage) {
+	          stage = viewer.scene;
+	        } else {
+	          stage = viewer.scene.getStage();
+	        }
+
+	        // marker for the robot
+	        var robotMarker = new ROS2D.NavigationArrow({
+	          size : 12,
+	          strokeSize : 2,
+	          fillColor : createjs.Graphics.getRGB(0, 0, 128, 1),
+	          pulse : false
+	        });
+
+	        // wait for a pose to come in first
+	        robotMarker.visible = false;
+	       
+	        viewer.scene.addChild(robotMarker);
+
+	        var initScaleSet = false;
+
+	        // setup a listener for the robot pose
+	        var poseListener = new ROSLIB.Topic({
+	          ros : ros,
+	          name : '/robot_pose',
+	          messageType : 'geometry_msgs/Pose',
+	          throttle_rate : 10
+	        });
+
+	        poseListener.subscribe(function(pose) {
+	          // update the robots position on the map
+	          robotMarker.x = pose.position.x;
+	          robotMarker.y = -pose.position.y;
+	          
+	          if (!initScaleSet) {
+	            robotMarker.scaleX = 1.0 / stage.scaleX;
+	            robotMarker.scaleY = 1.0 / stage.scaleY;
+	            initScaleSet = true;
+	          }
+
+	          // change the angle
+	          robotMarker.rotation = stage.rosQuaternionToGlobalTheta(pose.orientation);
+
+	          robotMarker.visible = true;
+
+	        });
+  			});
+
+		});
+	}
+	</script>
+</head>
+
+<body onload="init()">
+	<div class="navbar navbar-inverse navbar-fixed-top">
+		<a class="navbar-brand" href="#"><img src="http://www.lincoln.ac.uk/home/media/universityoflincoln/styleassets/images/logo-white.png"/></a>      
+		<ul class="nav pull-right">
+			<li><a href="http://lcas.lincoln.ac.uk">L-CAS</a></li>
+			<li><a href="http://strands-project.eu">STRANDS</a></li>
+			<li class="active"><a href="linda.html">Linda Live</a></li>
+		</ul>
+	</div>
+	<!--<div class="container">-->
+<!--
+      <div class="row">
+	<H1><font color="red">BETA WEBSITE, subject to continuous modification and only available occasionally for now</font></H1>
+      </div>
+      <br/>
+  -->
+  <div class="row">
+  	<H1 style="text-align: center;">
+  		<b><i>Linda - On Patrol in the Museum</i></b>
+  	</H1>
+    <H3 style="text-align:center"><a href="http://www.strands-project.eu/marathon.html">STRANDS Robot Marathon 2014</a>, an event of <a href="http://www.eu-robotics.net/eurobotics-week/about-eurobotics-week/">EU Robotics Week 2014 (24-30 Nov 2014) </a></H3>
+  	<br/>
+  	<div class="col-span-3">
+  		<div id="logo-left">
+			<!--<div style="position: absolute; left: 20px; top: 280px; width: 250px; height: 187px;" >-->
+        <div style="border-radius: 8px 8px 8px 8px;
+-moz-border-radius: 8px 8px 8px 8px;
+-webkit-border-radius: 8px 8px 8px 8px;
+border: 2px solid #ffffff;">
+        	 <div style="text-aling:center;padding: 10px" ><div id="mjpeg"><p><b>My live stream is currently unavailable</b></p></div>
+	  		   <small>This is a live stream of my head camera (if I'm on a public patrol mission). It is updated every 3 seconds, sufficient internet bandwidth permitting</small>
+           </div>
+        </div>
+	  		<h2>
+  				<img style="height: 600px;"
+  				src="robot-white.png"> 
+  			</h2>
+  			<p/>
+  			<div style="padding: 10px; border-radius: 8px 8px 8px 8px;
+-moz-border-radius: 8px 8px 8px 8px;
+-webkit-border-radius: 8px 8px 8px 8px;
+border: 2px solid #ffffff;" id="battery"></div>
+  			<p/>
+  		</div>
+      <br/>
+      <br/>
+  		<a href="http://strands-project.eu"><img style="width: 100%;" src="white-strands.png"></a> 
+      <a href="http://www.thecollectionmuseum.com/"><img style="background-color: #563c55" src="http://www.thecollectionmuseum.com/assets/images/templates/logo.png"/></a>
+      <p/>
+      <div style="padding: 10px; border-radius: 8px 8px 8px 8px;
+-moz-border-radius: 8px 8px 8px 8px;
+-webkit-border-radius: 8px 8px 8px 8px;
+border: 2px solid #ffffff;" >
+      <H3>Contact</H3>
+        <p>Dr Marc Hanheide</p>
+        <p>Centre for Autonomous Systems<br/>
+           University of Lincoln, UK</p>
+        <a href="mailto:marc@hanheide.net">marc@hanheide.net</a>
+        <p/>
+      </div>
+   	</div>
+
+  	<div class="col-span-6">
+  		<p>
+	 	Hello, my name is Linda. I am a research robot. I am usually based at the <a href="http://lcas.lincoln.ac.uk">Centre for Autonomous Systems</a> at the <a href="http://www.lincoln.ac.uk">University of Lincoln</a>, UK. I recently participated in the <a href="http://www.strands-project.eu/marathon.html">STRANDS Robot Marathon 2014 </a> where I patrolled <a href="http://www.thecollectionmuseum.com/">"The Collection" Museum for Art and Archeology</a> in Lincoln, and engaged with its visitors. I guided them through the exhibition and offered to tweet pictures. Check out my <a href="http://twitter.com/LindaStrands">Twitter stream</a> (also shown on the right) for latest news.
+      </p>
+      <p>On this site I'm streaming my data live to the internet, whenever I'm on a public patrol mission. As the bandwidth is limited there may be a few delays and interruption, and the data streams are therefore only provided occasionally. Feel free to watch videos of past activities I was involved in.</p>
+    
+    <h1><small>Linda's Video</small></h1>
+			<iframe width="440" height="320" src="http://www.youtube.com/embed/videoseries?list=PLPY1_sJa70XA7bH05Y-WEJ0zXOGvpooYe&autoplay=0&loop=1" frameborder="0" allowfullscreen></iframe>
+    <h1><small>Linda's Live Map</small></h1>
+    <p> When I am moving about can see a little triangle in my map. I acquired this map of the exhibition space myself using my sensors. Note that this live view is only available when I'm on a public patrol mission
+    <div id="nav"><br/><p><b>My live map is currently unavailable. Please check back later. I might not be connected to the internet at the minute.</b></p></div>
+		
+  	</div>
+  	<div class="col-span-3"style="background: rgba(36,36,36,1);border-radius: 10px 10px 10px 10px;-moz-border-radius: 10px 10px 10px 10px;-webkit-border-radius: 10px 10px 10px 10px;border: 0px solid #000000;">
+  		<H4>Linda's latest tweets at <b>@LindaStrands</b> <img src="http://g.twimg.com/Twitter_logo_blue.png" width="30px"/></H4>
+  		<a class="twitter-timeline" href="http://twitter.com/LindaStrands" width="450" height="1200" data-chrome="nofooter transparent noheader noscrollbar" data-widget-id="474206422993866754">Tweets by @LindaStrands</a>
+  		<script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+
+  	</div>
+  </div>
+
+
+
+
+
+
+
+  	</body>
+  	</html>
